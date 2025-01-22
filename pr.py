@@ -25,7 +25,7 @@ introductions_data = pd.read_excel(file_normalized, sheet_name="معرفی")
 differences_data = pd.read_excel(file_normalized, sheet_name="تفاوت")
 # --- مقداردهی اولیه ---
 TOKEN = '7980217172:AAFuQy4Gv9wYqtm42zxbRyh9zh89oWfHqMM'
-
+print(features_data.columns)
 
 # --- تعریف توابع کمکی ---
 def get_applications():
@@ -34,7 +34,7 @@ def get_applications():
 
 def get_devices_by_application(application_id):
 #"""بازگرداندن دستگاه‌های مرتبط با یک ماده مشخص"""
-    filtered_devices = devices_data[devices_data["ID کاربرد"].astype(str).str.contains(str(application_id))]
+    filtered_devices = devices_data[devices_data["کاربرد ID"].astype(str).str.contains(str(application_id))]
     return filtered_devices[["دستگاه", "نوع دستگاه", "مدل"]].drop_duplicates()
 
 # --- راه‌اندازی بات ---
@@ -67,7 +67,7 @@ async def handle_material_selection(update: Update, context: ContextTypes.DEFAUL
 
 # استخراج ماده انتخاب‌شده از callback_data
     material_id = int(query.data.split("_")[1])
-    selected_material = applications_data.loc[material_id - 1, "مواد"]
+    selected_material = applications_data.loc[material_id - 1, "ماده"]
 
 # ارسال پیام ماده انتخاب‌شده
     await query.message.reply_text(f"شما '{selected_material}' را انتخاب کردید.")
@@ -121,8 +121,8 @@ async def handle_model_selection(update: Update, context: ContextTypes.DEFAULT_T
 
     # نمایش گزینه‌ها
     keyboard = [
-        [InlineKeyboardButton("کاربردها", callback_data=f"info_applications_{model_id}")],
-        [InlineKeyboardButton("ویژگی‌ها", callback_data=f"info_features_{model_id}")],
+        [InlineKeyboardButton("کاربرد ها", callback_data=f"info_applications_{model_id}")],
+        [InlineKeyboardButton("ویژگی", callback_data=f"info_features_{model_id}")],
         [InlineKeyboardButton("معرفی", callback_data=f"info_intro_{model_id}")]
     ]
 
@@ -144,13 +144,13 @@ async def handle_info_request(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     # دریافت اطلاعات متناسب با نوع انتخاب‌شده
     if info_type == "applications":
-        content = features_data.loc[features_data["ID مدل"] == model_id, "کاربرد"].iloc[0]
+        content = features_data.loc[features_data["کاربرد ID"] == model_id, "دستگاه های پیشنهادی"].iloc[0]
     elif info_type == "features":
-        content = features_data.loc[features_data["ID مدل"] == model_id, "ویژگی"].iloc[0]
+        content = features_data.loc[features_data["ویژگی ID"] == model_id, "ویژگی ها"].iloc[0]
     elif info_type == "intro":
-        content = introductions_data.loc[introductions_data["ID مدل"] == model_id, "معرفی"].iloc[0]
+        content = introductions_data.loc[introductions_data["معرفی ID"] == model_id, "متن معرفی"].iloc[0]
     elif info_type == "diff":
-        content = differences_data.loc[differences_data["ID مدل"] == model_id, "تفاوت"].iloc[0]
+        content = differences_data.loc[differences_data["تفاوت ID"] == model_id, "توضیحات تفاوت"].iloc[0]
     else:
         content = "اطلاعاتی در دسترس نیست."
 
