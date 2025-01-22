@@ -28,29 +28,54 @@ def get_devices_by_application(application_id):
 
 # --- راه‌اندازی بات ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-#"""شروع مکالمه و نمایش مواد اولیه"""
-    update.message.reply_text("reza kocholo")
-    materials = get_applications()
-    keyboard = [[InlineKeyboardButton(material, callback_data=f"material_{i+1}")]
-    for i, material in enumerate(materials)]
+#"""نمایش دکمه شروع"""
+    keyboard = [[InlineKeyboardButton("انتخاب متریال", callback_data="start_chat")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text("لطفاً ماده مورد نظر را انتخاب کنید:", reply_markup=reply_markup)
+    await update.message.reply_text("بزن روی دکمه زیر تا بهت توی خرید دستگاه مد نظرت کمک کنم", reply_markup=reply_markup)
+
+async def welcome_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+#"""ارسال پیام خوش‌آمدگویی و نمایش مواد اولیه"""
+    query = update.callback_query
+    await query.answer() # ارسال پاسخ برای جلوگیری از timeout
+
+# ارسال پیام خوش‌آمدگویی
+    await query.message.reply_text(
+"یکی از موارد زیر رو که میخوای روش حکاکی کنی انتخاب کن تا توی انتخاب دستگاه بهت کمک کنم:"
+)
+
+# نمایش مواد اولیه به‌عنوان دکمه
+    materials = get_applications()
+    keyboard = [[InlineKeyboardButton(material, callback_data=f"material_{i+1}")] for i, material in enumerate(materials)]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.message.reply_text("لطفاً ماده مورد نظر را انتخاب کنید:", reply_markup=reply_markup)
+
+async def handle_material_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
+#"""نمایش دستگاه‌های مرتبط با ماده انتخاب‌شده"""
+    query = update.callback_query
+    await query.answer() # ارسال پاسخ برای جلوگیری از timeout
+
+# استخراج ماده انتخاب‌شده از callback_data
+    material_id = int(query.data.split("_")[1])
+    selected_material = applications_data.loc[material_id - 1, "مواد"]
+
+# ارسال پیام ماده انتخاب‌شده
+    await query.message.reply_text(f"شما '{selected_material}' را انتخاب کردید.")
+
+# نمایش دستگاه‌های مرتبط
+    devices = get_devices_by_application(material_id)
+    keyboard = [[InlineKeyboardButton(f"{row['دستگاه']} - {row['نوع دستگاه']}",
+    callback_data=f"device_{material_id}_{i}")] for i, row in devices.iterrows()]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.message.reply_text("لطفاً دستگاه مناسب را انتخاب کنید:", reply_markup=reply_markup)
 
 # --- تنظیم برنامه ---
 application = Application.builder().token(TOKEN).build()
 
 application.add_handler(CommandHandler("start", start))
+application.add_handler(CallbackQueryHandler(welcome_message, pattern="^start_chat$"))
+application.add_handler(CallbackQueryHandler(handle_material_selection, pattern="^material_"))
 
-# async def main():
-#     print("ربات در حال اجراست ....")
-#     await application.start
-#     await application.updater.start_polling()
-#     await application.updater.stop()
-#     await application.stop()
-# if __name__ == "__main__":
-#     asyncio.run(main())
 # --- اجرا ---
-print(applications_data.columns)
 if __name__ == "__main__":
     print("ربات در حال اجراست...")
     application.run_polling()
