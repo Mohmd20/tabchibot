@@ -64,13 +64,64 @@ async def welcome_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # نمایش مواد اولیه به‌عنوان دکمه
     materials = get_applications()
     keyboard = [[InlineKeyboardButton(material, callback_data=f"material_{i+1}")] for i, material in enumerate(materials)]
+    # keyboard = [[InlineKeyboardButton(material, callback_data=f"material_{material}")] for material in materials]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.message.reply_text("لطفاً ماده مورد نظر را انتخاب کنید:", reply_markup=reply_markup)
 
+# async def handle_material_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# #"""نمایش دستگاه‌های پیشنهادی بر اساس ماده انتخاب‌شده"""
+#     query = update.callback_query
+#     await query.answer()
+
+#     material = query.data.split("_")[1]
+#     devices = applications_data.loc[applications_data["ماده"] == material, "دستگاه های پیشنهادی"].iloc[0]
+#     device_list = devices.split(",") # تبدیل رشته به لیست دستگاه‌ها
+
+#     keyboard = [
+#     [InlineKeyboardButton(device.strip(), callback_data=f"device_{device.strip()}_{material}")]
+#     for device in device_list
+#     ]
+#     keyboard.append([InlineKeyboardButton("بازگشت", callback_data="back_start")]) # دکمه بازگشت
+
+#     reply_markup = InlineKeyboardMarkup(keyboard)
+#     await query.message.reply_text(
+#     f"شما '{material}' را انتخاب کردید. حالا یکی از دستگاه‌های زیر را انتخاب کنید:",
+#     reply_markup=reply_markup,
+#     )
+
 async def handle_material_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
-#"""نمایش دستگاه‌های مرتبط با ماده انتخاب‌شده"""
+    #"""مدیریت انتخاب متریال و نمایش دستگاه‌های پیشنهادی"""
     query = update.callback_query
-    await query.answer() # ارسال پاسخ برای جلوگیری از timeout
+    await query.answer()
+    print(query.data)
+    _ , material = query.data.split("")
+    material = material.strip()  # حذف فاصله اضافی
+
+    # فیلتر دستگاه‌های پیشنهادی بر اساس ماده
+    filtered_data = applications_data.loc[applications_data["ماده"] == material, "دستگاه های پیشنهادی"]
+
+    # بررسی خالی بودن داده‌ها
+    if filtered_data.empty:
+        await query.message.reply_text("متأسفانه اطلاعاتی برای متریال انتخابی یافت نشد.")
+        return
+
+    # دریافت دستگاه‌های پیشنهادی
+    device_data = filtered_data.iloc[0]
+    devices = device_data.split(" - ")
+
+    # ایجاد دکمه‌ها برای دستگاه‌های پیشنهادی
+    keyboard = [
+        [InlineKeyboardButton(device, callback_data=f"device_{device}_{material}")]
+        for device in devices
+    ]
+    keyboard.append([InlineKeyboardButton("بازگشت", callback_data="start")])  # دکمه بازگشت به شروع
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.message.reply_text(
+        f"شما '{material}' را انتخاب کردید. لطفاً یکی از دستگاه‌های زیر را انتخاب کنید:",
+        reply_markup=reply_markup,
+    )
+
 
 # استخراج ماده انتخاب‌شده از callback_data
     material_id = int(query.data.split("_")[1])
@@ -86,10 +137,54 @@ async def handle_material_selection(update: Update, context: ContextTypes.DEFAUL
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.message.reply_text("لطفاً دستگاه مناسب را انتخاب کنید:", reply_markup=reply_markup)
 
+# async def handle_device_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# #"""نمایش مدل‌های دستگاه انتخاب‌شده"""
+#     query = update.callback_query
+#     await query.answer()
+
+#     _, device, material = query.data.split("_")
+#     models = devices_data.loc[devices_data["دستگاه"] == device, ["مدل", "هوشمند یا غیر هوشمند"]]
+
+#     keyboard = [
+#     [InlineKeyboardButton(f"{row['مدل']} ({row['هوشمند یا غیر هوشمند']})", callback_data=f"model_{row.name}")]
+#     for _, row in models.iterrows()
+#     ]
+#     keyboard.append([InlineKeyboardButton("بازگشت", callback_data=f"back_material_{material}")]) # دکمه بازگشت
+
+#     reply_markup = InlineKeyboardMarkup(keyboard)
+#     await query.message.reply_text(
+#     f"شما '{device}' را انتخاب کردید. حالا یکی از مدل‌های زیر را انتخاب کنید:",
+#     reply_markup=reply_markup,
+#     )
+
 async def handle_device_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """نمایش مدل‌های دستگاه انتخاب‌شده"""
+    #"""نمایش مدل‌های دستگاه انتخاب‌شده"""
     query = update.callback_query
     await query.answer()
+
+    _, device, material = query.data.split("")
+    device = device.strip()  # حذف فاصله اضافی
+
+    # فیلتر داده‌ها بر اساس دستگاه انتخاب‌شده
+    models = devices_data.loc[devices_data["دستگاه"] == device, ["مدل", "هوشمند یا غیر هوشمند"]]
+
+    # بررسی خالی بودن نتیجه فیلتر
+    if models.empty:
+        await query.message.reply_text("متأسفانه اطلاعاتی برای این دستگاه یافت نشد.")
+        return
+
+    # ساخت دکمه‌های مدل‌ها
+    keyboard = [
+        [InlineKeyboardButton(f"{row['مدل']} ({row['هوشمند یا غیر هوشمند']})", callback_data=f"model_{row.name}")]
+        for _, row in models.iterrows()
+    ]
+    keyboard.append([InlineKeyboardButton("بازگشت", callback_data=f"back_material_{material}")])  # دکمه بازگشت
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.message.reply_text(
+        f"شما '{device}' را انتخاب کردید. حالا یکی از مدل‌های زیر را انتخاب کنید:",
+        reply_markup=reply_markup,
+    )
 
     # استخراج اطلاعات دستگاه از callback_data
     _, material_id, device_id = query.data.split("_")
