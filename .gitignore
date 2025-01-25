@@ -1,2 +1,5 @@
 .env*
 .session*
+pr_gpt.py
+makefile
+backup.py
