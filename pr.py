@@ -55,17 +55,28 @@ async def welcome_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.message.reply_text("لطفاً ماده مورد نظر را انتخاب کنید:", reply_markup=reply_markup)
 
 async def handle_material_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    #"""نمایش دستگاه‌های مرتبط با ماده انتخاب‌شده"""
     query = update.callback_query
-    await query.answer()
+    await query.answer()  # ارسال پاسخ برای جلوگیری از timeout
 
+    # استخراج ماده انتخاب‌شده از callback_data
     material_id = int(query.data.split("_")[1])
     selected_material = applications_data.loc[material_id - 1, "ماده"]
 
+    # ارسال پیام ماده انتخاب‌شده
     await query.message.reply_text(f"شما '{selected_material}' را انتخاب کردید.")
 
-    devices = get_devices_by_application(material_id)
-    keyboard = [[InlineKeyboardButton(device["دستگاه"], callback_data=f"device_{material_id}_{i}")]
-                for i, device in devices.iterrows()]
+    # فیلتر دستگاه‌ها مرتبط با ماده انتخاب‌شده
+    filtered_devices = devices_data[
+        devices_data["کاربرد ID"]
+        .apply(lambda x: str(material_id) in map(str.strip, str(x).split(",")))
+    ].drop_duplicates(subset=["دستگاه"]).reset_index(drop=True)
+
+    # ایجاد دکمه‌ها برای دستگاه‌های فیلتر شده
+    keyboard = [
+        [InlineKeyboardButton(row["دستگاه"], callback_data=f"device_{material_id}_{i}")]
+        for i, row in filtered_devices.iterrows()
+    ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.message.reply_text("لطفاً دستگاه مناسب را انتخاب کنید:", reply_markup=reply_markup)
 
@@ -79,30 +90,30 @@ async def handle_device_selection(update: Update, context: ContextTypes.DEFAULT_
     material_id = int(material_id)
     device_index = int(device_index)
 
-    # فیلتر دستگاه‌های مرتبط با ماده
-    filtered_devices = devices_data[devices_data["کاربرد ID"].astype(str).str.contains(str(material_id))].drop_duplicates(subset=["دستگاه"]).reset_index()
+    # فیلتر دستگاه‌ها مرتبط با ماده انتخاب‌شده
+    filtered_devices = devices_data[
+        devices_data["کاربرد ID"]
+        .apply(lambda x: str(material_id) in map(str.strip, str(x).split(",")))
+    ].drop_duplicates(subset=["دستگاه"]).reset_index(drop=True)
 
-    # بررسی اینکه ایندکس در محدوده داده‌ها قرار دارد
-    if device_index >= len(filtered_devices):
-        await query.message.reply_text("دستگاه انتخاب‌شده معتبر نیست.")
-        return
-
-    # انتخاب دستگاه
+    # بازیابی دستگاه انتخاب‌شده با ایندکس فیلتر شده
     selected_device = filtered_devices.loc[device_index, "دستگاه"]
 
     # ارسال پیام دستگاه انتخاب‌شده
     await query.message.reply_text(f"شما دستگاه '{selected_device}' را انتخاب کردید.")
 
-    # نمایش مدل‌های مرتبط با دستگاه انتخاب‌شده
+    # فیلتر مدل‌های مرتبط با دستگاه انتخاب‌شده
     device_models = devices_data[
-        (devices_data["کاربرد ID"].astype(str).str.contains(str(material_id))) &
-        (devices_data["دستگاه"] == selected_device)
+        (devices_data["دستگاه"] == selected_device) &
+        devices_data["کاربرد ID"].apply(lambda x: str(material_id) in map(str.strip, str(x).split(",")))
     ]
 
+    # بررسی اینکه آیا مدل‌هایی برای دستگاه یافت شده‌اند
     if device_models.empty:
         await query.message.reply_text("مدل‌هایی برای این دستگاه یافت نشد.")
         return
 
+    # ایجاد دکمه‌ها برای مدل‌های دستگاه
     keyboard = [
         [InlineKeyboardButton(f"{row['مدل']} - {'هوشمند' if row['هوشمند یا غیر هوشمند'] == 'هوشمند' else 'غیر هوشمند'}",
                               callback_data=f"model_{material_id}_{i}")]
