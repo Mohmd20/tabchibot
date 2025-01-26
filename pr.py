@@ -4,7 +4,7 @@ from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, Callback
 
 # --- خواندن فایل اکسل ---
 
-file_normalized = "output.xlsx"
+file_normalized = "output2.xlsx"
 
 devices_data = pd.read_excel(file_normalized, sheet_name="اطلاعات کلی")
 applications_data = pd.read_excel(file_normalized, sheet_name="کاربرد ها")
@@ -50,6 +50,8 @@ async def welcome_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     materials = get_applications()
+    for i, material in enumerate(materials):
+        print(f"i = {i} mater = {materials}")
     keyboard = [[InlineKeyboardButton(material, callback_data=f"material_{i+1}")] for i, material in enumerate(materials)]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.message.reply_text("لطفاً ماده مورد نظر را انتخاب کنید:", reply_markup=reply_markup)
@@ -94,7 +96,7 @@ async def handle_device_selection(update: Update, context: ContextTypes.DEFAULT_
     filtered_devices = devices_data[
         devices_data["کاربرد ID"]
         .apply(lambda x: str(material_id) in map(str.strip, str(x).split(",")))
-    ].drop_duplicates(subset=["دستگاه"]).reset_index(drop=True)
+    ].drop_duplicates(subset=["دستگاه"]).reset_index(drop= True)
 
     # بازیابی دستگاه انتخاب‌شده با ایندکس فیلتر شده
     selected_device = filtered_devices.loc[device_index, "دستگاه"]
@@ -116,18 +118,83 @@ async def handle_device_selection(update: Update, context: ContextTypes.DEFAULT_
     # ایجاد دکمه‌ها برای مدل‌های دستگاه
     keyboard = [
         [InlineKeyboardButton(f"{row['مدل']} - {'هوشمند' if row['هوشمند یا غیر هوشمند'] == 'هوشمند' else 'غیر هوشمند'}",
-                              callback_data=f"model_{material_id}_{i}")]
+                              callback_data=f"model_{i}_{i}")]
         for i, row in device_models.iterrows()
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.message.reply_text("لطفاً مدل دستگاه را انتخاب کنید:", reply_markup=reply_markup)
+
+async def handle_model_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    #"""نمایش گزینه‌های مدل انتخاب‌شده (ویژگی‌ها، معرفی و تفاوت)"""
+    query = update.callback_query
+    await query.answer()
+
+    # استخراج اطلاعات مدل از callback_data
+    _, device_id, model_id = query.data.split("_")
+    device_id = int(device_id) 
+    model_id = int(model_id) 
+    print(f" device {device_id} model {model_id}")
+    # دریافت اطلاعات مدل
+    selected_model = devices_data.loc[devices_data.index[model_id], "مدل"]
+    selected_device = devices_data.loc[devices_data.index[device_id], "دستگاه"]
+
+    # ارسال پیام مدل انتخاب‌شده
+    await query.message.reply_text(f"شما مدل '{selected_model}' از دستگاه '{selected_device}' را انتخاب کردید.")
+
+    # نمایش گزینه‌ها
+    keyboard = [
+        [InlineKeyboardButton("ویژگی‌ها", callback_data=f"info_features_{model_id}")],
+        [InlineKeyboardButton("معرفی", callback_data=f"info_intro_{model_id}")]
+    ]
+
+    # اضافه کردن گزینه تفاوت برای دستگاه فایبر
+    if selected_device == "فایبر":
+        keyboard.append([InlineKeyboardButton("تفاوت هوشمند و غیرهوشمند", callback_data=f"info_diff_{model_id}")])
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.message.reply_text("لطفاً یکی از گزینه‌های زیر را انتخاب کنید:", reply_markup=reply_markup)
+async def handle_info_request(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """نمایش اطلاعات مرتبط با گزینه انتخاب‌شده (ویژگی‌ها، معرفی، تفاوت)"""
+    query = update.callback_query
+    await query.answer()
+
+    # استخراج نوع اطلاعات و مدل از callback_data
+    _, info_type, model_id = query.data.split("_")
+    model_id = int(model_id)
+   
+    print(query.data)
+    # فیلتر داده‌ها بر اساس model_id
+    if info_type == "features":
+        filtered_data = features_data[features_data["ویژگی ID"] == model_id]
+        if not filtered_data.empty:
+            content = filtered_data["ویژگی ها"].iloc[0]
+        else:
+            content = "اطلاعات ویژگی‌ها موجود نیست."
+    elif info_type == "intro":
+        filtered_data = introductions_data[introductions_data["معرفی ID"] == model_id+1]
+        if not filtered_data.empty:
+            content = filtered_data["متن معرفی"].iloc[0]
+        else:
+            content = "اطلاعات معرفی موجود نیست."
+    elif info_type == "diff":
+        filtered_data = differences_data[0]
+        if not filtered_data.empty:
+            content = filtered_data["توضیحات تفاوت"].iloc[0]
+        else:
+            content = "اطلاعات تفاوت موجود نیست."
+    else:
+        content = "اطلاعاتی در دسترس نیست."
+
+    # ارسال پیام اطلاعات
+    await query.message.reply_text(content)
 # --- تنظیمات ربات ---
 application = Application.builder().token(TOKEN).build()
 application.add_handler(CommandHandler("start", start))
 application.add_handler(CallbackQueryHandler(handle_material_selection, pattern="^material_"))
 application.add_handler(CallbackQueryHandler(handle_device_selection, pattern="^device_"))
 application.add_handler(CallbackQueryHandler(welcome_message, pattern="^start_chat$"))
-print("www")
+application.add_handler(CallbackQueryHandler(handle_model_selection, pattern="^model_"))
+application.add_handler(CallbackQueryHandler(handle_info_request, pattern="^info_"))
 # --- اجرا ---
 if __name__ == "__main__":
     print("ربات در حال اجراست...")
