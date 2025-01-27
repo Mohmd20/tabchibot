@@ -160,7 +160,7 @@ async def handle_info_request(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     # استخراج نوع اطلاعات و مدل از callback_data
     _, info_type, model_id = query.data.split("_")
-    model_id = int(model_id)
+    model_id = int(model_id) + 1
    
     print(query.data)
     # فیلتر داده‌ها بر اساس model_id
@@ -171,13 +171,14 @@ async def handle_info_request(update: Update, context: ContextTypes.DEFAULT_TYPE
         else:
             content = "اطلاعات ویژگی‌ها موجود نیست."
     elif info_type == "intro":
-        filtered_data = introductions_data[introductions_data["معرفی ID"] == model_id+1]
+        filtered_data = introductions_data[introductions_data["معرفی ID"] == model_id]
         if not filtered_data.empty:
             content = filtered_data["متن معرفی"].iloc[0]
         else:
             content = "اطلاعات معرفی موجود نیست."
     elif info_type == "diff":
-        filtered_data = differences_data[0]
+        filtered_data = differences_data[differences_data["تفاوت ID"] == 1]
+        
         if not filtered_data.empty:
             content = filtered_data["توضیحات تفاوت"].iloc[0]
         else:
