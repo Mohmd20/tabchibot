@@ -36,17 +36,17 @@ def get_models_by_device(device_name, application_id):
 
 # --- توابع هندلر ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [[InlineKeyboardButton("انتخاب متریال", callback_data="start_chat")]]
-    keyboard.append([InlineKeyboardButton("پشتیبانی", url="https://t.me/Support_ID")])
+    keyboard = [[InlineKeyboardButton("بزن بریم", callback_data="start_chat")]]
+    keyboard.append([InlineKeyboardButton("پشتیبانی", url="https://t.me/misterwebdeveloper")])
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text("بزن روی دکمه زیر تا توی خریدت بهت کمک کنم", reply_markup=reply_markup)
+    await update.message.reply_text("سلام ! من ربات لیزر دات کام هستم , اینجام تا کمکت کنم دستگاه مد نظرت رو بخری", reply_markup=reply_markup)
 
 async def welcome_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
     await query.message.reply_text(
-        "یکی از موارد زیر رو که میخوای روش حکاکی کنی انتخاب کن تا توی انتخاب دستگاه بهت کمک کنم:"
+        "حالا یکی از موارد زیر رو که میخوای روش حکاکی کنی انتخاب کن :"
     )
 
     materials = get_applications()
@@ -54,7 +54,7 @@ async def welcome_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         print(f"i = {i} mater = {materials}")
     keyboard = [[InlineKeyboardButton(material, callback_data=f"material_{i+1}")] for i, material in enumerate(materials)]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await query.message.reply_text("لطفاً ماده مورد نظر را انتخاب کنید:", reply_markup=reply_markup)
+    await query.message.reply_text("لطفاً متریال مورد نظرت رو انتخاب کن:", reply_markup=reply_markup)
 
 async def handle_material_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
     #"""نمایش دستگاه‌های مرتبط با ماده انتخاب‌شده"""
@@ -79,6 +79,8 @@ async def handle_material_selection(update: Update, context: ContextTypes.DEFAUL
         [InlineKeyboardButton(row["دستگاه"], callback_data=f"device_{material_id}_{i}")]
         for i, row in filtered_devices.iterrows()
     ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    keyboard.append([InlineKeyboardButton("بازگشت" , callback_data =  "start_chat")])
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.message.reply_text("لطفاً دستگاه مناسب را انتخاب کنید:", reply_markup=reply_markup)
 
@@ -118,9 +120,11 @@ async def handle_device_selection(update: Update, context: ContextTypes.DEFAULT_
     # ایجاد دکمه‌ها برای مدل‌های دستگاه
     keyboard = [
         [InlineKeyboardButton(f"{row['مدل']} - {'هوشمند' if row['هوشمند یا غیر هوشمند'] == 'هوشمند' else 'غیر هوشمند'}",
-                              callback_data=f"model_{i}_{i}")]
+                              callback_data=f"model_{i}_{i}_{material_id}_{device_index}")]
         for i, row in device_models.iterrows()
     ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    keyboard.append([InlineKeyboardButton("بازگشت" , callback_data =  f"material_{material_id}")])
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.message.reply_text("لطفاً مدل دستگاه را انتخاب کنید:", reply_markup=reply_markup)
 
@@ -130,7 +134,7 @@ async def handle_model_selection(update: Update, context: ContextTypes.DEFAULT_T
     await query.answer()
 
     # استخراج اطلاعات مدل از callback_data
-    _, device_id, model_id = query.data.split("_")
+    _, device_id, model_id , material_id , device_index = query.data.split("_")
     device_id = int(device_id) 
     model_id = int(model_id) 
     print(f" device {device_id} model {model_id}")
@@ -151,7 +155,11 @@ async def handle_model_selection(update: Update, context: ContextTypes.DEFAULT_T
     if selected_device == "فایبر":
         keyboard.append([InlineKeyboardButton("تفاوت هوشمند و غیرهوشمند", callback_data=f"info_diff_{model_id}")])
 
+
     reply_markup = InlineKeyboardMarkup(keyboard)
+    keyboard.append([InlineKeyboardButton("بازگشت" , callback_data =  f"device_{material_id}_{device_index}")])
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
     await query.message.reply_text("لطفاً یکی از گزینه‌های زیر را انتخاب کنید:", reply_markup=reply_markup)
 async def handle_info_request(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """نمایش اطلاعات مرتبط با گزینه انتخاب‌شده (ویژگی‌ها، معرفی، تفاوت)"""
