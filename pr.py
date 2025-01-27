@@ -1,5 +1,6 @@
+import asyncio
 import pandas as pd
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup ,BotCommand
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext, ContextTypes, Application
 
 # --- خواندن فایل اکسل ---
@@ -40,18 +41,23 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard.append([InlineKeyboardButton("پشتیبانی", url="https://t.me/misterwebdeveloper")])
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text("سلام ! من ربات لیزر دات کام هستم , اینجام تا کمکت کنم دستگاه مد نظرت رو بخری", reply_markup=reply_markup)
-
+async def support (update:Update , context:ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("برای ارتباط با ما روی   id زیر کلیک کنید :(https://t.me/misterwebdeveloper)" , parse_mode="Markdown")
+async def set_bot_commands(application: Application):
+    commands = [
+        BotCommand("start" , "خانه"),
+        BotCommand("support" , "ارتباط با پشتیبانی")
+    ]
+    await application.bot.set_my_commands(commands)
 async def welcome_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
     await query.message.reply_text(
-        "حالا یکی از موارد زیر رو که میخوای روش حکاکی کنی انتخاب کن :"
+        "برای شروع اول باید بدونم روی چی میخوای حکاکی کنی!"
     )
 
     materials = get_applications()
-    for i, material in enumerate(materials):
-        print(f"i = {i} mater = {materials}")
     keyboard = [[InlineKeyboardButton(material, callback_data=f"material_{i+1}")] for i, material in enumerate(materials)]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.message.reply_text("لطفاً متریال مورد نظرت رو انتخاب کن:", reply_markup=reply_markup)
@@ -66,7 +72,7 @@ async def handle_material_selection(update: Update, context: ContextTypes.DEFAUL
     selected_material = applications_data.loc[material_id - 1, "ماده"]
 
     # ارسال پیام ماده انتخاب‌شده
-    await query.message.reply_text(f"شما '{selected_material}' را انتخاب کردید.")
+    # await query.message.reply_text(f"شما '{selected_material}' را انتخاب کردید.")
 
     # فیلتر دستگاه‌ها مرتبط با ماده انتخاب‌شده
     filtered_devices = devices_data[
@@ -82,7 +88,7 @@ async def handle_material_selection(update: Update, context: ContextTypes.DEFAUL
     reply_markup = InlineKeyboardMarkup(keyboard)
     keyboard.append([InlineKeyboardButton("بازگشت" , callback_data =  "start_chat")])
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await query.message.reply_text("لطفاً دستگاه مناسب را انتخاب کنید:", reply_markup=reply_markup)
+    await query.message.reply_text(f"لطفا دستگاه مناسب مربوط به {selected_material} را انتخاب کنید", reply_markup=reply_markup)
 
 async def handle_device_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
     #"""نمایش مدل‌های دستگاه انتخاب‌شده"""
@@ -104,7 +110,7 @@ async def handle_device_selection(update: Update, context: ContextTypes.DEFAULT_
     selected_device = filtered_devices.loc[device_index, "دستگاه"]
 
     # ارسال پیام دستگاه انتخاب‌شده
-    await query.message.reply_text(f"شما دستگاه '{selected_device}' را انتخاب کردید.")
+    # await query.message.reply_text(f"شما دستگاه '{selected_device}' را انتخاب کردید.")
 
     # فیلتر مدل‌های مرتبط با دستگاه انتخاب‌شده
     device_models = devices_data[
@@ -126,7 +132,7 @@ async def handle_device_selection(update: Update, context: ContextTypes.DEFAULT_
     reply_markup = InlineKeyboardMarkup(keyboard)
     keyboard.append([InlineKeyboardButton("بازگشت" , callback_data =  f"material_{material_id}")])
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await query.message.reply_text("لطفاً مدل دستگاه را انتخاب کنید:", reply_markup=reply_markup)
+    await query.message.reply_text(f"مدل مربوط به دستگاه {selected_device} رو انتخاب کن", reply_markup=reply_markup)
 
 async def handle_model_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
     #"""نمایش گزینه‌های مدل انتخاب‌شده (ویژگی‌ها، معرفی و تفاوت)"""
@@ -137,13 +143,12 @@ async def handle_model_selection(update: Update, context: ContextTypes.DEFAULT_T
     _, device_id, model_id , material_id , device_index = query.data.split("_")
     device_id = int(device_id) 
     model_id = int(model_id) 
-    print(f" device {device_id} model {model_id}")
     # دریافت اطلاعات مدل
     selected_model = devices_data.loc[devices_data.index[model_id], "مدل"]
     selected_device = devices_data.loc[devices_data.index[device_id], "دستگاه"]
 
     # ارسال پیام مدل انتخاب‌شده
-    await query.message.reply_text(f"شما مدل '{selected_model}' از دستگاه '{selected_device}' را انتخاب کردید.")
+    # await query.message.reply_text(f"شما مدل '{selected_model}' از دستگاه '{selected_device}' را انتخاب کردید.")
 
     # نمایش گزینه‌ها
     keyboard = [
@@ -160,9 +165,9 @@ async def handle_model_selection(update: Update, context: ContextTypes.DEFAULT_T
     keyboard.append([InlineKeyboardButton("بازگشت" , callback_data =  f"device_{material_id}_{device_index}")])
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await query.message.reply_text("لطفاً یکی از گزینه‌های زیر را انتخاب کنید:", reply_markup=reply_markup)
+    await query.message.reply_text(f"چی میخوای درباره مدل {selected_model} دستگاه {selected_device} بدونی؟؟", reply_markup=reply_markup)
 async def handle_info_request(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """نمایش اطلاعات مرتبط با گزینه انتخاب‌شده (ویژگی‌ها، معرفی، تفاوت)"""
+    #"""نمایش اطلاعات مرتبط با گزینه انتخاب‌شده (ویژگی‌ها، معرفی، تفاوت)"""
     query = update.callback_query
     await query.answer()
 
@@ -170,7 +175,6 @@ async def handle_info_request(update: Update, context: ContextTypes.DEFAULT_TYPE
     _, info_type, model_id = query.data.split("_")
     model_id = int(model_id) + 1
    
-    print(query.data)
     # فیلتر داده‌ها بر اساس model_id
     if info_type == "features":
         filtered_data = features_data[features_data["ویژگی ID"] == model_id]
@@ -204,7 +208,9 @@ application.add_handler(CallbackQueryHandler(handle_device_selection, pattern="^
 application.add_handler(CallbackQueryHandler(welcome_message, pattern="^start_chat$"))
 application.add_handler(CallbackQueryHandler(handle_model_selection, pattern="^model_"))
 application.add_handler(CallbackQueryHandler(handle_info_request, pattern="^info_"))
+application.add_handler(CommandHandler("support" , support))
 # --- اجرا ---
 if __name__ == "__main__":
     print("ربات در حال اجراست...")
+    application.post_init = set_bot_commands
     application.run_polling()
