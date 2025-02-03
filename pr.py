@@ -14,7 +14,7 @@ introductions_data = pd.read_excel(file_normalized, sheet_name="معرفی")
 differences_data = pd.read_excel(file_normalized, sheet_name="تفاوت")
 
 # --- مقداردهی اولیه ---
-TOKEN = '7980217172:AAFuQy4Gv9wYqtm42zxbRyh9zh89oWfHqMM'
+TOKEN = '....'
 
 
 # --- تعریف توابع کمکی ---
